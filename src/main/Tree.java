@@ -1,7 +1,9 @@
 package main;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -9,14 +11,23 @@ import java.util.Scanner;
 import java.util.Set;
 
 public class Tree {
-	public Node decisionTreeRoot;
-	List<String> categories = new ArrayList<String>(); //This program assumes categories will be binary (I.e it has only two possibilities)
-	List<String> attributes = new ArrayList<String>(); 
-	List<Instance> people = new ArrayList<Instance>();
-	
-	int numAttributes = 0;
+	public  Node decisionTreeRoot;
+	public  List<String> categories = new ArrayList<String>(); //This program assumes categories will be binary (I.e it has only two possibilities)
+	public  List<String> attributesList = new ArrayList<String>(); 
+	public  List<Instance> people = new ArrayList<Instance>();
+	public String majorityCategory;
+
+	public  int numAttributes = 0;
 	public Tree(File trainingSetFile){
 		buildTrainingSetFromFile(trainingSetFile);
+
+		baseLineClassifier();
+
+		decisionTreeRoot = buildTree(people, attributesList);
+		System.out.println("");
+		decisionTreeRoot.report("");
+		
+		//buildTestSetFromFile(testSetFile); not implemented
 	}
 
 
@@ -27,17 +38,41 @@ public class Tree {
 		new Tree(new File(args[0]));
 	}
 
+	// identify the most frequency class and its probability
+	private void baseLineClassifier(){
+		int [] counts = new int[categories.size()];
+
+		for(Instance i : people)
+			counts[categories.indexOf(i.getCategory())]++;
+
+		int max = 0;
+		for(int i = 0; i < counts.length; i++){
+			if(counts[i] > max){
+				max = counts[i];
+				majorityCategory = categories.get(i);
+			}
+		}
+
+	}
+
+
+
+
+
 	/**
 	 * Method which builds the tree	
 	 * @param instances
-	 * @param attributes
+	 * @param attributesList
 	 */
-	public Node buildTree(List<Instance> instances, List<String> attributes){
+	public  Node buildTree(List<Instance> instances, List<String> attributes){
 		//Set is pure enough, so print leaves
 		if(instances.isEmpty()){
+
 			return buildLeaf(people);//Return leaf containing name and probability of most likely class (Baseline Predictor)
+
 		}
 		if(pureCheck(instances)){//If Instances are pure, return a leaf node containing the name of the class of the instances in the node and probability 1
+
 			return new Leaf(instances.get(0).getCategory(), 1); //gets the category of the first instance in the list(Since its pure, can just grab any instance out)
 		}
 		if(attributes.isEmpty()){
@@ -48,8 +83,8 @@ public class Tree {
 			String bestAttribute = null;//find best attribute
 
 			//for each attribute
-			List<Instance> bestTrue = new ArrayList<Instance>();//seperate instances into two sets:
-			List<Instance> bestFalse = new ArrayList<Instance>();
+			List<Instance> bestTrue = null;//seperate instances into two sets:
+			List<Instance> bestFalse = null;
 
 			double trackPurity = 1;//Set initial best purity as 1 (100%). This will keep track of the best purity as the algorithm goes down
 			for(String attribute: attributes){
@@ -63,13 +98,14 @@ public class Tree {
 						attFalse.add(i);
 					}
 				}
-
+				System.out.println("trackPurity = " + trackPurity);
 				double averagePurity = computePurity(attTrue, attFalse);//compute purity of each set
 				if(trackPurity > averagePurity){//if weighted average purity of these sets is best so far
 					trackPurity = averagePurity;
 					bestAttribute = attribute;//bestAtt = this attribute
 					bestTrue = attTrue;//bestInstsTrue = set of true instances
 					bestFalse = attFalse;//bestInstsFalse = set of false instances
+
 
 				}
 			}
@@ -80,6 +116,8 @@ public class Tree {
 				}
 
 			}
+
+
 			Node left = buildTree(bestTrue, minusBestAtt);//left = Buildtree(bestInstsTrue, attributes - bestAtt)
 			Node right = buildTree(bestFalse, minusBestAtt);//right = BuildTree(bestInstsTrue, attributes - bestAtt)
 			
@@ -104,9 +142,9 @@ public class Tree {
 
 					Scanner scn = new Scanner(attributesLine);
 					while(scn.hasNext()){
-						attributes.add(scn.next()); //Gets the line of attributes, splits them, and puts them all in a list.
+						attributesList.add(scn.next()); //Gets the line of attributes, splits them, and puts them all in a list.
 						numAttributes++;
-						System.out.println(attributes.get(numAttributes-1));
+						System.out.println(attributesList.get(numAttributes-1));
 
 					}
 					scn.close();//efficiency
@@ -114,15 +152,19 @@ public class Tree {
 			}
 
 			//Deals with the data for each person (Instances)
-			while(sc.hasNextLine()){
+			while(sc.hasNextLine() && sc.hasNext()){
+				//System.out.println("Gets Inside the while loop");
 				List<Boolean> tempList = new ArrayList<Boolean>();
 				String tempValue = null;
 				if(sc.hasNext() && !sc.hasNextBoolean()){ //get information about whether the person lived or died. Only useful with the training set
 					//is the start of a new line i.e a new person.
+
 					tempValue = sc.next();
 				}
 				while(sc.hasNext()){
+
 					if(sc.hasNextBoolean()){
+
 						String saveBoolean;
 						saveBoolean = sc.next();
 						if(saveBoolean.equals("true")){
@@ -132,10 +174,16 @@ public class Tree {
 							tempList.add(false);
 						}
 					}
-					people.add(new Instance(tempValue, tempList)); //Add new person to the list of people
-				}
+					else{
+						break;
+					}
 
+
+				}
+				people.add(new Instance(tempValue, tempList)); //Add new person to the list of people
 			}
+
+
 
 
 
@@ -152,31 +200,32 @@ public class Tree {
 	 * Builds the values for the test set from the file
 	 */
 	public void buildTestSetFromFile(File testFile){
-
-		try {
-			Scanner sc = new Scanner(testFile);
-			//dont need the first two pieces
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		
 
 	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	/**
 	 * Returns true iff the list of instances is pure
@@ -204,6 +253,8 @@ public class Tree {
 	public double computePurity(List<Instance> left, List<Instance> right){
 		double totalInstances = left.size() + right.size();//First figure out how many instances of person there are total
 		String category = categories.get(0);//get one of the two category names
+		double leftSize = left.size();
+		double rightSize = right.size();
 		int mLeft = 0;
 		int nLeft = 0;
 		int mRight = 0;
@@ -221,22 +272,24 @@ public class Tree {
 				mRight++;
 			}
 		}
+		System.out.println("mLeft = " + mLeft + "mRight = " + mRight);
 		//now we know how many instances are one category. The other category is the absolute value of totalInstances - (leftVote+rightVote)
 		nLeft = left.size() - mLeft; //Any left over that arent classified as the category here, are the other category.
 		nRight = right.size() - mRight;
 
 		//Time for the impurity formula. Low impurity means high purity.
-		double leftImpurity = ((mLeft/(mLeft+nLeft)) * (nLeft/(mLeft+nLeft)));
-		double rightImpurity = ((mRight/(mRight+nRight)) * (nRight/(mRight+nRight)));
+		double leftImpurity = leftSize > 0 ?(mLeft/leftSize) * ((leftSize-mLeft)/leftSize) : 0;
+		double rightImpurity = rightSize > 0 ? (mRight/rightSize) * ((rightSize-mRight)/rightSize) : 0;
 
 		//Now to get the weighted impurities of the nodes
 		// Weighted average impurity of subnodes = SUM(P(node) * impurity(node))
-		double purity = ((leftImpurity*(left.size()/totalInstances))+(rightImpurity*(right.size()/totalInstances)));
+		double purity = leftImpurity*(leftSize/totalInstances) + rightImpurity *(rightSize/totalInstances);
+
 		return purity;
 
 	}
 
-	
+
 	/**
 	 * Method which returns the leaf with the majority category from the list of instances
 	 * @param leafInstances

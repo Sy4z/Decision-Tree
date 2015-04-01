@@ -17,6 +17,7 @@ public class Instance {
 	public Instance(String category, List<Boolean> values){
 		this.category =  category;
 		this.values = values;
+		
 
 	}
 
@@ -37,5 +38,8 @@ public class Instance {
 		return category;
 	}
 
+	public boolean getAtt(int index){
+		return values.get(index);
+	}
 
 }

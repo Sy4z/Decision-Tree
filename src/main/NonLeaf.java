@@ -11,17 +11,19 @@ import java.util.List;
 public class NonLeaf extends Node{
 
 	
-	private Node left;
-	private Node right;
-	private String categoryType;
+	private Node leftNode;
+	private Node rightNode;
+	public String attributeType;
 	//private boolean isTraining = false;
 	int order = 0; //The order in which they were added. this is used only for populating other lists. It has nothing to do with the actual decision tree.
 	List<Boolean> purityValues = new ArrayList<Boolean>(); //this will hold all the true/false values. Purity will be checked later.
 	
-	public NonLeaf(String category, Node left, Node right){
+	public NonLeaf(String attribute, Node left, Node right){
 		//isTraining = training;
-		categoryType = category;
-		this.order = order;	
+		attributeType = attribute;
+		//this.order = order;	
+		this.leftNode = left;
+		this.rightNode = right;
 		
 	}
 
@@ -38,7 +40,7 @@ public class NonLeaf extends Node{
 	 * @return
 	 */
 	public Node getRight(){
-		return right;
+		return rightNode;
 	}
 	
 	/**
@@ -46,9 +48,22 @@ public class NonLeaf extends Node{
 	 * @return
 	 */
 	public Node getLeft(){
-		return left;
+		return leftNode;
 	}
 	
+	public void report(String indent){
+		System.out.format("%s%s = True:\n",indent, attributeType);
+		if(leftNode == null){
+			System.out.println("left node is null");
+		}
+		if(rightNode == null){
+			System.out.println("right node is null");
+		}
+		leftNode.report(indent+" ");
+		System.out.format("%s%s = False:\n",indent, attributeType);
+		rightNode.report(indent+" ");
+		}
+
 	
 	
 	

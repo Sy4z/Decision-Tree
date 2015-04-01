@@ -27,5 +27,9 @@ public class Leaf extends Node {
 	public boolean isLeaf() {
 		return true;
 	}
+	
+	public void report(String indent){
+		System.out.format("%sClass %s, prob= %s\n",indent, category, probability);
+		}
 
 }
