@@ -9,9 +9,11 @@ import java.util.Scanner;
 import java.util.Set;
 
 public class Tree {
-	List<String> categories = new ArrayList<String>();
-	List<String> attributes = new ArrayList<String>();
-	List<Person> people = new ArrayList<Person>();
+	public Node decisionTreeRoot;
+	List<String> categories = new ArrayList<String>(); //This program assumes categories will be binary (I.e it has only two possibilities)
+	List<String> attributes = new ArrayList<String>(); 
+	List<Instance> people = new ArrayList<Instance>();
+	
 	int numAttributes = 0;
 	public Tree(File trainingSetFile){
 		buildTrainingSetFromFile(trainingSetFile);
@@ -30,35 +32,58 @@ public class Tree {
 	 * @param instances
 	 * @param attributes
 	 */
-	public Node BuildTree(List<Person> instances, List<String> attributes){
+	public Node buildTree(List<Instance> instances, List<String> attributes){
 		//Set is pure enough, so print leaves
 		if(instances.isEmpty()){
-			//Return leaf containing name and probability of most likely class (Baseline Predictor)
+			return buildLeaf(people);//Return leaf containing name and probability of most likely class (Baseline Predictor)
 		}
 		if(pureCheck(instances)){//If Instances are pure, return a leaf node containing the name of the class of the instances in the node and probability 1
-		return new Leaf(instances.get(0).getCategory(), 1); //gets the category of the first instance in the list(Since its pure, can just grab any instance out)
+			return new Leaf(instances.get(0).getCategory(), 1); //gets the category of the first instance in the list(Since its pure, can just grab any instance out)
 		}
 		if(attributes.isEmpty()){
-			//return leaf node containing the name and probability of the majority class of the instances in the node(Choose randomly if classes are equal)
+			return buildLeaf(instances);//return leaf node containing the name and probability of the majority class of the instances in the node(Choose randomly if classes are equal)
 		}
 		//Set is not pure enough, so construct subsets of instances in the subnodes, then compute average purity
 		else{ 
 			String bestAttribute = null;//find best attribute
 
 			//for each attribute
-			//seperate instances into two sets:
-			//instances for which the attribute is true, and
-			//instances for which the attribute is false
-			//compute purity of each set
-			//if weighted average purity of these sets is best so far
-			//bestAtt = this attribute
-			//bestInstsTrue = set of true instances
-			//bestInstsFalse = set of false instances
+			List<Instance> bestTrue = new ArrayList<Instance>();//seperate instances into two sets:
+			List<Instance> bestFalse = new ArrayList<Instance>();
 
-			//build subtrees using the remaining attributes:
-			//left = Buildtree(bestInstsTrue, attributes - bestAtt)
-			//right = BuildTree(bestInstsTrue, attributes - bestAtt)
-			//return node containing(bestAtt, left, right)
+			double trackPurity = 1;//Set initial best purity as 1 (100%). This will keep track of the best purity as the algorithm goes down
+			for(String attribute: attributes){
+				List<Instance> attTrue = new ArrayList<Instance>();//instances for which the attribute is true, and
+				List<Instance> attFalse = new ArrayList<Instance>();//instances for which the attribute is false
+				for(Instance i : instances){
+					if(i.getValues().get(attributes.indexOf(attribute)) == true){
+						attTrue.add(i);
+					}
+					else{
+						attFalse.add(i);
+					}
+				}
+
+				double averagePurity = computePurity(attTrue, attFalse);//compute purity of each set
+				if(trackPurity > averagePurity){//if weighted average purity of these sets is best so far
+					trackPurity = averagePurity;
+					bestAttribute = attribute;//bestAtt = this attribute
+					bestTrue = attTrue;//bestInstsTrue = set of true instances
+					bestFalse = attFalse;//bestInstsFalse = set of false instances
+
+				}
+			}
+			List<String> minusBestAtt = new ArrayList<String>();//build subtrees using the remaining attributes: i.e add the attribute subtrees minus the best attribute
+			for(int i=0; i<attributes.size();i++){ //loop through the list of attributes and make a new temp list that does not contain the best attribute
+				if(!attributes.get(i).equals(bestAttribute)){
+					minusBestAtt.add(attributes.get(i));
+				}
+
+			}
+			Node left = buildTree(bestTrue, minusBestAtt);//left = Buildtree(bestInstsTrue, attributes - bestAtt)
+			Node right = buildTree(bestFalse, minusBestAtt);//right = BuildTree(bestInstsTrue, attributes - bestAtt)
+			
+			return new NonLeaf(bestAttribute, left, right);//return node containing(bestAtt, left, right)
 		}
 
 
@@ -107,7 +132,7 @@ public class Tree {
 							tempList.add(false);
 						}
 					}
-					people.add(new Person(tempValue, tempList)); //Add new person to the list of people
+					people.add(new Instance(tempValue, tempList)); //Add new person to the list of people
 				}
 
 			}
@@ -153,21 +178,16 @@ public class Tree {
 
 	}
 
-	public Leaf buildLeaf(){
-		return null;
-
-	}
-
 	/**
 	 * Returns true iff the list of instances is pure
 	 * Else returns false
 	 * @param instance
 	 * @return
 	 */
-	public boolean pureCheck(List<Person> instance){
+	public boolean pureCheck(List<Instance> instance){
 		String category = instance.get(0).getCategory();
 
-		for(Person i : instance){
+		for(Instance i : instance){
 			if(!i.getCategory().equals(category)){
 				return false;
 			}
@@ -175,16 +195,84 @@ public class Tree {
 		return true;
 
 	}
-	
+
 	/**
-	 * Computes the weighted purity of the two input sets.
+	 * Computes the weighted purity of the two input sets (Unstructured Subtrees)
 	 * Impurity Formula: P(A)P(B) = ((m/(m+n)) * (n/(m+n)))
 	 * m = number of A's, n = number of B's
 	 */
-	public double computePurity(List<Person> left, List<Person> right){
-		
-		
-		
+	public double computePurity(List<Instance> left, List<Instance> right){
+		double totalInstances = left.size() + right.size();//First figure out how many instances of person there are total
+		String category = categories.get(0);//get one of the two category names
+		int mLeft = 0;
+		int nLeft = 0;
+		int mRight = 0;
+		int nRight = 0;
+		//now figure out how many of the category are correct for each tree
+		//left subtree
+		for(Instance i : left){
+			if(i.getCategory().equals(category)){
+				mLeft++;
+			}
+		}
+		//right subtree
+		for(Instance z : right){
+			if(z.getCategory().equals(category)){
+				mRight++;
+			}
+		}
+		//now we know how many instances are one category. The other category is the absolute value of totalInstances - (leftVote+rightVote)
+		nLeft = left.size() - mLeft; //Any left over that arent classified as the category here, are the other category.
+		nRight = right.size() - mRight;
+
+		//Time for the impurity formula. Low impurity means high purity.
+		double leftImpurity = ((mLeft/(mLeft+nLeft)) * (nLeft/(mLeft+nLeft)));
+		double rightImpurity = ((mRight/(mRight+nRight)) * (nRight/(mRight+nRight)));
+
+		//Now to get the weighted impurities of the nodes
+		// Weighted average impurity of subnodes = SUM(P(node) * impurity(node))
+		double purity = ((leftImpurity*(left.size()/totalInstances))+(rightImpurity*(right.size()/totalInstances)));
+		return purity;
+
+	}
+
+	
+	/**
+	 * Method which returns the leaf with the majority category from the list of instances
+	 * @param leafInstances
+	 * @return Leaf
+	 */
+	public Leaf buildLeaf(List<Instance> leafInstances){
+		//We're assuming there are always going to be only two categories in this program. A third category would add another level of complexity
+		int category1 = 0; //votes for the first category (Index 0 in the list of categories)
+		int category2 = 0; //votes for the second category (Index 1 in the list of categories)
+		for(Instance c: people){
+			if(c.getCategory().equals(categories.get(0))){
+				category1++;
+			}
+			else{
+				category2++;
+			}
+		}
+		String majority;
+		int highest;
+		//if there is a tie: we'll choose a node at random. In this case, pseudorandom considering it wont matter which is returned, we'll return the first one
+		if(category1 == category2){
+			majority = categories.get(0); //Was a bit lazy, instead of true randomness, am just taking the first category if its a tie.
+			highest = category1;
+		}
+		else if(category1 > category2){
+			majority = categories.get(0);
+			highest = category1;
+		}
+		else{
+			majority = categories.get(1);
+			highest = category2;
+		}
+
+
+		return new Leaf(majority, (double)(highest/leafInstances.size()));
+
 	}
 
 

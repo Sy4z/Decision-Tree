@@ -7,14 +7,14 @@ import java.util.List;
  * @author Jarred Hone
  *
  */
-public class Person {
+public class Instance {
 
 	String category;
 	private List<Boolean> values = new ArrayList<Boolean>();
 
 
 
-	public Person(String category, List<Boolean> values){
+	public Instance(String category, List<Boolean> values){
 		this.category =  category;
 		this.values = values;
 
