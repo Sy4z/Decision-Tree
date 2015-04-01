@@ -1,5 +1,6 @@
 package main;
 
-public class Node {
-
+abstract class Node {
+abstract boolean isLeaf();
+	
 }
